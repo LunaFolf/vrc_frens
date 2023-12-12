@@ -1,0 +1,19 @@
+{
+  "name": "vrc_frens",
+  "version": "1.0.0",
+  "description": "A quick node.js app to poll VRChat API, and see if anyone has just gone online then send out an alert.",
+  "main": "index.js",
+  "scripts": {
+    "serve": "node dist",
+    "build": "tsc",
+    "preserve": "npm run build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/node": "^20.10.4",
+    "prompt-sync": "^4.2.0",
+    "typescript": "^5.3.3"
+  }
+}
