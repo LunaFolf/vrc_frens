@@ -1,5 +1,6 @@
 import {authenticate, getFriends, vrcUser} from "./api/vrchat";
 require('dotenv').config()
+const prompt = require('prompt-sync')({sigint: true});
 
 const friends: vrcUser[] = []
 
@@ -26,10 +27,10 @@ async function sendDiscordMessage(message: string, options?: discordMessageOptio
     })
 }
 
-async function main(firstRun = true) {
+async function main(base64: string, firstRun = true) {
     console.log(new Date, 'Checking for online peeps...')
     const tick = performance.now()
-    const { data } = await authenticate('')
+    const { data } = await authenticate(base64)
 
     if (!data) return
 
@@ -82,7 +83,10 @@ async function main(firstRun = true) {
 
     console.log(`[Done ${resultTick.toFixed(2)}ms] Waiting ${delaySeconds}s...`)
 
-    setTimeout(main, delaySeconds * 1000)
+    setTimeout(() => main(base64), delaySeconds * 1000)
 }
 
-main()
+const email = prompt('Enter email: ')
+const password = prompt.hide('Enter password: ')
+
+main(btoa(`${email}:${password}`))
