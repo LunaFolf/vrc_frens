@@ -33,22 +33,62 @@ const headers = {
     'Cookie': 'auth=auth'
 }
 
+function _isCookieExpired(cookie: string): boolean {
+    const expiry = cookie.split(';').map(s => s.trim().split('=')[1])[3]
+
+    const expiryDate = new Date(expiry)
+    const nowDate = new Date()
+
+    return expiryDate <= nowDate
+}
+
+function _verifyCookieValidity(): void {
+    if (!existsSync('cookies.temp')) return
+
+    let parsedArray: string[] = []
+
+    try {
+        parsedArray = JSON.parse(readFileSync('cookies.temp').toString())
+    } catch (err) {
+        console.error(err)
+        return
+    }
+
+    if (!Array.isArray(parsedArray)) return
+
+    const filteredArray: string[] = parsedArray.filter(cookie => !_isCookieExpired(cookie))
+
+    writeFileSync('cookies.temp', JSON.stringify(filteredArray))
+}
+
+_verifyCookieValidity()
+
 function _loadCookies(): string[] {
     if (!existsSync('cookies.temp')) return []
 
-    const parsedObject = JSON.parse(readFileSync('cookies.temp').toString())
+    let parsedArray: string[] = []
 
-    if (!Array.isArray(parsedObject)) return []
+    try {
+        parsedArray = JSON.parse(readFileSync('cookies.temp').toString())
+    } catch (err) {
+        console.error(err)
+        return []
+    }
 
-    return parsedObject
+    if (!Array.isArray(parsedArray)) return []
+
+    return parsedArray
 }
-function _getCookies() {
-    return cookies.map(cookie => cookie.split(';')[0]).join('; ')
+
+function _getCookies(asArray: boolean = false) {
+    const cookiesArray = cookies.map(cookie => cookie.split(';')[0])
+
+    return asArray ? cookiesArray : cookiesArray.join('; ')
 }
 
 function _getHeaders() {
     return {
-        cookie: _getCookies(),
+        cookie: _getCookies() as string,
         ...headers
     }
 }
@@ -83,8 +123,6 @@ async function _handleResponse(response: Response): Promise<jsendResponseGeneric
 export async function get (url: string, newHeaders?: basicHeaders): Promise<jsendResponseGeneric> {
     const _headers: basicHeaders = _getHeaders()
     if (newHeaders) Object.keys(newHeaders).forEach(headerKey => _headers[headerKey] = newHeaders[headerKey])
-
-    // console.debug('[GET]', url, { _headers })
 
     const response = await fetch(url, { method: 'GET', headers: _headers })
 
