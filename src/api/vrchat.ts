@@ -58,8 +58,8 @@ export async function verifyTotp (code: string): Promise<boolean> {
     return data?.verified
 }
 
-export async function getFriends () {
-    const response = await get(`${baseURL}/auth/user/friends`)
+export async function getFriends (offline = false, limit = 100, offset = 0) {
+    const response = await get(`${baseURL}/auth/user/friends?offline=${offline ? 'true' : 'false'}&n=${limit}&offset=${offset}`)
 
     if (response.status !== 'success' || !response.data) return response
 

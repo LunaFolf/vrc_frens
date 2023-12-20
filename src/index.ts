@@ -2,10 +2,11 @@ import {authenticate, getFriends, vrcUser} from "./api/vrchat";
 require('dotenv').config()
 const prompt = require('prompt-sync')({sigint: true});
 
-const friends: vrcUser[] = []
+let friends: vrcUser[] = []
 let lastOnline: string[] = []
 
 let lastFailure: Date | null = null
+let lastFriendCheck: Date | null = null
 
 const delaySeconds = 5
 const webhookURL = process.env.DISCORD_WEBHOOK_URL || ''
@@ -35,6 +36,11 @@ async function checkOnlineFriends(base64: string) {
 
         if (!data) return
 
+        if (!lastFriendCheck || (new Date().getTime() - lastFriendCheck.getTime() >= 30000)) {
+            await getAllFriends()
+            lastFriendCheck = new Date()
+        }
+
         const onlineFriends: string[] = data.onlineFriends
         const nowOnline: vrcUser[] = []
 
@@ -52,14 +58,18 @@ async function checkOnlineFriends(base64: string) {
 
         if (nowOnline.length) {
             console.log('New users online!')
-            console.log(nowOnline.map(u => u.displayName).join(', '))
 
-            nowOnline.forEach(user => {
+            nowOnline.forEach((user, index) => {
                 let pfp = user.userIcon || user.profilePicOverride || user.currentAvatarImageUrl
-                sendDiscordMessage('<@131771596800131072> I\'m online!', {
-                    username: user.displayName,
-                    avatar_url: pfp
-                })
+
+                console.log('    ', user.displayName, 'is online.')
+
+                setTimeout(() => {
+                    sendDiscordMessage('<@131771596800131072> I\'m online!', {
+                        username: user.displayName,
+                        avatar_url: pfp
+                    })
+                }, 1000 * index)
             })
         }
 
@@ -87,6 +97,36 @@ async function checkOnlineFriends(base64: string) {
     }
 }
 
+async function getUserFromResponse(response: any): Promise<vrcUser[]> {
+  let users: vrcUser[] = []
+
+  if (response.status === 'success' && response.data) {
+    users = response.data as vrcUser[]
+  }
+
+  return users
+}
+
+async function getAllFriends(): Promise<vrcUser[]> {
+    console.log('Getting all friends (online/offline)')
+    friends = []
+
+    const onlineFriendsResponse = await getFriends(false, 100, 0)
+    const offlineFriendsResponse = await getFriends(true, 100, 0)
+
+    // friends = friends.concat(await getUserFromResponse(onlineFriendsResponse))
+    // friends = friends.concat(await getUserFromResponse(offlineFriendsResponse))
+
+    const onlineFriends = await getUserFromResponse(onlineFriendsResponse)
+    friends = friends.concat(onlineFriends)
+    const offlineFriends = await getUserFromResponse(offlineFriendsResponse)
+    friends = friends.concat(offlineFriends)
+
+    console.log(friends.length, 'Friends', `(${onlineFriends.length} online / ${offlineFriends.length} offline)`)
+
+    return friends
+}
+
 ;(async () => {
     const email = prompt('Enter email: ')
     const password = prompt.hide('Enter password: ')
@@ -95,12 +135,6 @@ async function checkOnlineFriends(base64: string) {
     const { data } = await authenticate(base64)
 
     if (!data) return
-
-    const friendsResponse = await getFriends()
-    if (friendsResponse.status === 'success' && friendsResponse.data) {
-        const users = friendsResponse.data as vrcUser[]
-        friends.push(...users)
-    }
 
     checkOnlineFriends(base64);
 })();
